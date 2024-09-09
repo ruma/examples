@@ -34,8 +34,9 @@ type HttpClient = client::http_client::HyperNativeTls;
 type MatrixClient = client::Client<client::http_client::HyperNativeTls>;
 
 async fn run() -> Result<(), Box<dyn Error>> {
-    let config =
-        read_config().await.map_err(|e| format!("configuration in ./config is invalid: {e}"))?;
+    let config = read_config()
+        .await
+        .map_err(|e| format!("configuration in ./config is invalid: {e}"))?;
     let http_client = hyper_util::client::legacy::Client::builder(TokioExecutor::new())
         .build(hyper_tls::HttpsConnector::new());
     let matrix_client = if let Some(state) = read_state().await.ok().flatten() {
@@ -48,7 +49,9 @@ async fn run() -> Result<(), Box<dyn Error>> {
         let client = create_matrix_session(http_client.clone(), &config).await?;
 
         if let Err(err) = write_state(&State {
-            access_token: client.access_token().expect("Matrix access token is missing"),
+            access_token: client
+                .access_token()
+                .expect("Matrix access token is missing"),
         })
         .await
         {
@@ -90,16 +93,21 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Listening...");
     while let Some(response) = sync_stream.try_next().await? {
-        let message_futures = response.rooms.join.iter().map(|(room_id, room_info)| async move {
-            // Use a regular for loop for the messages within one room to handle them sequentially
-            for e in &room_info.timeline.events {
-                if let Err(err) =
-                    handle_message(http_client, matrix_client, e, room_id.to_owned(), user_id).await
-                {
-                    eprintln!("failed to respond to message: {err}");
+        let message_futures = response
+            .rooms
+            .join
+            .iter()
+            .map(|(room_id, room_info)| async move {
+                // Use a regular for loop for the messages within one room to handle them sequentially
+                for e in &room_info.timeline.events {
+                    if let Err(err) =
+                        handle_message(http_client, matrix_client, e, room_id.to_owned(), user_id)
+                            .await
+                    {
+                        eprintln!("failed to respond to message: {err}");
+                    }
                 }
-            }
-        });
+            });
 
         let invite_futures = response.rooms.invite.into_keys().map(|room_id| async move {
             if let Err(err) = handle_invitations(http_client, matrix_client, room_id.clone()).await
@@ -125,7 +133,10 @@ async fn create_matrix_session(
             .http_client(http_client)
             .await?;
 
-        if let Err(e) = client.log_in(config.username.as_ref(), password, None, None).await {
+        if let Err(e) = client
+            .log_in(config.username.as_ref(), password, None, None)
+            .await
+        {
             let reason = match e {
                 client::Error::AuthenticationRequired => "invalid credentials specified".to_owned(),
                 client::Error::Response(response_err) => {
@@ -141,7 +152,9 @@ async fn create_matrix_session(
 
         Ok(client)
     } else {
-        Err("Failed to create session: no password stored in config".to_owned().into())
+        Err("Failed to create session: no password stored in config"
+            .to_owned()
+            .into())
     }
 }
 
@@ -191,10 +204,14 @@ async fn handle_invitations(
     room_id: OwnedRoomId,
 ) -> Result<(), Box<dyn Error>> {
     println!("invited to {room_id}");
-    matrix_client.send_request(join_room_by_id::v3::Request::new(room_id.clone())).await?;
+    matrix_client
+        .send_request(join_room_by_id::v3::Request::new(room_id.clone()))
+        .await?;
 
     let greeting = "Hello! My name is Mr. Bot! I like to tell jokes. Like this one: ";
-    let joke = get_joke(http_client).await.unwrap_or_else(|_| "err... never mind.".to_owned());
+    let joke = get_joke(http_client)
+        .await
+        .unwrap_or_else(|_| "err... never mind.".to_owned());
     let content = RoomMessageEventContent::text_plain(format!("{greeting}\n{joke}"));
     let txn_id = TransactionId::new();
     let message = send_message_event::v3::Request::new(room_id, txn_id, &content)?;
@@ -209,7 +226,9 @@ async fn get_joke(client: &HttpClient) -> Result<String, Box<dyn Error>> {
     let bytes = rsp.into_body().collect().await?.to_bytes();
     let joke_obj = serde_json::from_slice::<JsonValue>(&bytes)
         .map_err(|_| "invalid JSON returned from joke API")?;
-    let joke = joke_obj["joke"].as_str().ok_or("joke field missing from joke API response")?;
+    let joke = joke_obj["joke"]
+        .as_str()
+        .ok_or("joke field missing from joke API response")?;
     Ok(joke.to_owned())
 }
 
@@ -262,7 +281,11 @@ async fn read_config() -> io::Result<Config> {
     }
 
     match (homeserver, username) {
-        (Some(homeserver), Ok(username)) => Ok(Config { homeserver, username, password }),
+        (Some(homeserver), Ok(username)) => Ok(Config {
+            homeserver,
+            username,
+            password,
+        }),
         (homeserver, username) => {
             let mut error = String::from("Invalid config specified:");
             if homeserver.is_none() {

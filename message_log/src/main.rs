@@ -19,8 +19,10 @@ async fn log_messages(
     username: &str,
     password: &str,
 ) -> anyhow::Result<()> {
-    let client =
-        ruma::Client::builder().homeserver_url(homeserver_url).build::<HttpClient>().await?;
+    let client = ruma::Client::builder()
+        .homeserver_url(homeserver_url)
+        .build::<HttpClient>()
+        .await?;
 
     client.log_in(username, password, None, None).await?;
 
@@ -41,7 +43,12 @@ async fn log_messages(
     while let Some(res) = sync_stream.try_next().await? {
         // Only look at rooms the user hasn't left yet
         for (room_id, room) in res.rooms.join {
-            for event in room.timeline.events.into_iter().flat_map(|r| r.deserialize()) {
+            for event in room
+                .timeline
+                .events
+                .into_iter()
+                .flat_map(|r| r.deserialize())
+            {
                 // Filter out the text messages
                 if let AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::RoomMessage(
                     SyncMessageLikeEvent::Original(OriginalSyncMessageLikeEvent {
