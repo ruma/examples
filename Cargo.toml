@@ -1,0 +1,6 @@
+[workspace]
+members = ["hello_world", "joke_bot", "message_log"]
+resolver = "2"
+
+# Do not use `workspace.package` in this repo. We want each package
+# in here to work independently, when copy-pasted out of the repo.
